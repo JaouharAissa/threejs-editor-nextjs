@@ -1,7 +1,7 @@
 # Migration Report: Three.js Editor to Next.js + TypeScript
 
 **Author**: Jaouhar Aissa  
-**Date**: December 20, 2025  
+**Date**: December 21, 2025  
 **Subject**: Technical Assessment - Three.js Editor Migration
 
 ---
@@ -32,7 +32,7 @@ An analysis of the original codebase revealed several patterns that limit scalab
 *   **File**: `editor/js/Viewport.js` (Lines 340-345)
 *   **Issue**: Disposal of resources (renderers, materials) is handled via manual calls inside signal listeners.
 *   **Impact**: High risk of memory leaks if a developer forgets a disposal call or if an error interrupts the teardown sequence.
-*   **Migration Fix**: Levied React's `useEffect` cleanup function. When a component unmounts, the disposal logic runs automatically and reliably.
+*   **Migration Fix**: Leveraged React's `useEffect` cleanup function. When a component unmounts, the disposal logic runs automatically and reliably.
 
 ---
 
