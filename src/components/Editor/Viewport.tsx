@@ -20,6 +20,7 @@ interface ExtendedViewportProps extends ViewportProps {
     selectedObject: THREE.Object3D | null;
     mode: EditorMode;
     transformSpace?: 'local' | 'world';
+    onTransformChange?: () => void;
 }
 
 export default function Viewport({
@@ -31,6 +32,7 @@ export default function Viewport({
     mode,
     transformSpace = 'world',
     onObjectSelect,
+    onTransformChange,
     className = '',
 }: ExtendedViewportProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -68,13 +70,25 @@ export default function Viewport({
             orbitControls.enabled = !event.value;
         });
 
+        // Listen for transform changes to update React state
+        const handleTransformChange = () => {
+            if (onTransformChange) {
+                onTransformChange();
+            }
+        };
+
+        transformControls.addEventListener('change', handleTransformChange);
+        transformControls.addEventListener('objectChange', handleTransformChange);
+
         return () => {
             orbitControls.dispose();
             transformControls.dispose();
+            transformControls.removeEventListener('change', handleTransformChange);
+            transformControls.removeEventListener('objectChange', handleTransformChange);
             scene.remove(gizmo);
             transformGizmoRef.current = null;
         };
-    }, [scene, camera, onRender]);
+    }, [scene, camera, onRender, onTransformChange]);
 
     // Update transform controls space
     useEffect(() => {

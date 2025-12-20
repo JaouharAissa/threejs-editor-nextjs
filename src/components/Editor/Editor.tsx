@@ -21,6 +21,7 @@ export default function Editor() {
     const { state, selectObject, setMode } = useEditorState();
     const [camera, setCamera] = useState<THREE.PerspectiveCamera | null>(null);
     const [transformSpace, setTransformSpace] = useState<'local' | 'world'>('world');
+    const [, forceUpdate] = useState({});
 
     // Initialize camera on mount (client-side only)
     useEffect(() => {
@@ -190,6 +191,11 @@ export default function Editor() {
         []
     );
 
+    const handleTransformChange = useCallback(() => {
+        // Force re-render to update sidebar values
+        forceUpdate({});
+    }, []);
+
     return (
         <div className="flex flex-col h-screen w-screen bg-neutral-900 text-white">
             <MenuBar onAction={handleMenuAction} />
@@ -210,6 +216,7 @@ export default function Editor() {
                         mode={state.mode}
                         transformSpace={transformSpace}
                         onObjectSelect={selectObject}
+                        onTransformChange={handleTransformChange}
                     />
                 </div>
                 <Sidebar
