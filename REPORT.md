@@ -1,7 +1,7 @@
 # Migration Report: Three.js Editor to Next.js + TypeScript
 
-**Author**: [Your Name/Candidate]  
-**Date**: December 21, 2025  
+**Author**: Jaouhar Aissa  
+**Date**: December 20, 2025  
 **Subject**: Technical Assessment - Three.js Editor Migration
 
 ---
