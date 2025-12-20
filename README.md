@@ -34,11 +34,13 @@ my-threejs-project/
 │   │   └── globals.css           # Global styles
 │   ├── components/
 │   │   └── Editor/
-│   │       ├── Editor.tsx        # Main editor orchestrator
-│   │       ├── Viewport.tsx      # 3D canvas and rendering
-│   │       ├──  Sidebar.tsx       # Property editing panel
-│   │       ├── Toolbar.tsx       # Mode selection tools
-│   │       └── MenuBar.tsx       # File/Edit/Add menu
+│   │       ├── Editor.tsx          # Main editor orchestrator
+│   │       ├── Viewport.tsx        # 3D canvas and rendering
+│   │       ├── Sidebar.tsx         # Property editing panel
+│   │       ├── SceneHierarchy.tsx  # Hierarchical scene tree view
+│   │       ├── SceneTreeNode.tsx   # Recursive tree node component
+│   │       ├── Toolbar.tsx         # Mode selection tools
+│   │       └── MenuBar.tsx         # File/Edit/Add menu
 │   ├── hooks/
 │   │   ├── useThreeScene.ts      # Scene lifecycle management
 │   │   ├── useRenderer.ts        # Renderer with cleanup
@@ -57,14 +59,15 @@ my-threejs-project/
 
 ### Prerequisites
 
-- **Node.js** 18+ 
+- **Node.js** 20+ (required for Next.js 16)
 - **npm** or **yarn**
 
 ### Installation
 
-1. **Clone the repository** (or download the code):
+1. **Clone the repository**:
 ```bash
-cd my-threejs-project
+git clone https://github.com/Jaouhar9/threejs-editor-nextjs.git
+cd threejs-editor-nextjs
 ```
 
 2. **Install dependencies**:
@@ -184,18 +187,42 @@ This implementation addresses several critical issues from the original Three.js
 **Problem**: Original often forgets to cancel animation frames on unmount.
 **Solution**: Custom `useAnimationLoop` hook ensures proper cleanup.
 
+### Issue #5: Performance Optimizations
+**Problem**: Unnecessary re-renders, expensive raycasting, and color accuracy issues.
+**Solution**: 
+- Implemented `React.memo` for sidebar components
+- Optimized raycasting by filtering system objects (Grid, Gizmos)
+- Disabled tone mapping for WYSIWYG color representation
+- Disabled shadows by default for better performance
+
 See [REPORT.md](./REPORT.md) for detailed analysis.
 
-## 🧪 Testing
+## 🧪 Testing & CI/CD
 
-### Type Checking
+### Continuous Integration
+
+This project includes a GitHub Actions workflow that automatically:
+- ✅ Runs TypeScript type checking
+- ✅ Builds the Next.js application
+- ✅ Validates on every push to main branch
+
+**CI Status**: ![Build Status](https://github.com/Jaouhar9/threejs-editor-nextjs/actions/workflows/ci.yml/badge.svg)
+
+### Local Testing
+
+**Type Checking**:
 ```bash
 npm run type-check
 ```
 
-### Build Verification
+**Build Verification**:
 ```bash
 npm run build
+```
+
+**Linting** (optional):
+```bash
+npm run next:lint
 ```
 
 ## 📝 Development Notes
@@ -232,12 +259,21 @@ If deploying to production, consider:
 - [Next.js Documentation](https://nextjs.org/docs)
 - [React Three Fiber](https://docs.pmnd.rs/react-three-fiber) - Alternative React + Three.js approach
 
+## 🔗 Links
+
+- **Live Repository**: [github.com/Jaouhar9/threejs-editor-nextjs](https://github.com/Jaouhar9/threejs-editor-nextjs)
+- **Original Three.js Editor**: [threejs.org/editor](https://threejs.org/editor/)
+- **Technical Report**: [REPORT.md](./REPORT.md)
+
 ## 👤 Author
 
+**Jaouhar Aissa**
+
 Created as a technical assessment demonstrating:
-- TypeScript proficiency
-- React/Next.js architecture skills
-- 3D graphics understanding
+- TypeScript proficiency with strict mode
+- Modern React/Next.js architecture
+- 3D graphics and WebGL understanding
+- Performance optimization skills
 - Problem-solving and code quality
 
 ## 📄 License
