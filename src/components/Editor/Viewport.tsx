@@ -1,0 +1,216 @@
+/**
+ * Viewport Component
+ * 
+ * Main 3D rendering viewport with camera controls, object selection, and transform controls.
+ */
+
+'use client';
+
+import { useEffect, useRef, useCallback, } from 'react';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import { ViewportProps, EditorMode } from '@/types/editor';
+
+interface ExtendedViewportProps extends ViewportProps {
+    scene: THREE.Scene | null;
+    camera: THREE.PerspectiveCamera | null;
+    onInitRenderer: (canvas: HTMLCanvasElement) => void;
+    onRender: (scene: THREE.Scene) => void;
+    selectedObject: THREE.Object3D | null;
+    mode: EditorMode;
+    transformSpace?: 'local' | 'world';
+}
+
+export default function Viewport({
+    scene,
+    camera,
+    onInitRenderer,
+    onRender,
+    selectedObject,
+    mode,
+    transformSpace = 'world',
+    onObjectSelect,
+    className = '',
+}: ExtendedViewportProps) {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const orbitControlsRef = useRef<OrbitControls | null>(null);
+    const transformControlsRef = useRef<TransformControls | null>(null);
+    const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
+    const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2());
+    const transformGizmoRef = useRef<THREE.Object3D | null>(null);
+
+    // Initialize renderer when canvas mounts
+    useEffect(() => {
+        if (canvasRef.current) {
+            onInitRenderer(canvasRef.current);
+        }
+    }, [onInitRenderer]);
+
+    // Initialize controls
+    useEffect(() => {
+        if (!canvasRef.current || !camera || !scene) return;
+
+        const orbitControls = new OrbitControls(camera, canvasRef.current);
+        orbitControls.enableDamping = true;
+        orbitControls.dampingFactor = 0.05;
+        orbitControlsRef.current = orbitControls;
+
+        const transformControls = new TransformControls(camera, canvasRef.current);
+        transformControlsRef.current = transformControls;
+
+        // Use getHelper() to add the gizmo to the scene
+        const gizmo = transformControls.getHelper();
+        scene.add(gizmo);
+        transformGizmoRef.current = gizmo;
+
+        transformControls.addEventListener('dragging-changed', (event) => {
+            orbitControls.enabled = !event.value;
+        });
+
+        return () => {
+            orbitControls.dispose();
+            transformControls.dispose();
+            scene.remove(gizmo);
+            transformGizmoRef.current = null;
+        };
+    }, [scene, camera, onRender]);
+
+    // Update transform controls space
+    useEffect(() => {
+        if (transformControlsRef.current) {
+            transformControlsRef.current.setSpace(transformSpace);
+        }
+    }, [transformSpace]);
+
+    // Update transform controls mode
+    useEffect(() => {
+        if (!transformControlsRef.current) return;
+
+        switch (mode) {
+            case EditorMode.TRANSLATE:
+                transformControlsRef.current.setMode('translate');
+                break;
+            case EditorMode.ROTATE:
+                transformControlsRef.current.setMode('rotate');
+                break;
+            case EditorMode.SCALE:
+                transformControlsRef.current.setMode('scale');
+                break;
+            case EditorMode.SELECT:
+                break;
+        }
+    }, [mode]);
+
+    // Update transform controls when selection changes
+    useEffect(() => {
+        if (!transformControlsRef.current) return;
+
+        if (selectedObject && mode !== EditorMode.SELECT) {
+            transformControlsRef.current.attach(selectedObject);
+        } else {
+            transformControlsRef.current.detach();
+        }
+    }, [selectedObject, mode]);
+
+    // Handle mouse click for object selection
+    const handleCanvasClick = useCallback((event: MouseEvent) => {
+        if (!canvasRef.current || !camera || !scene || !onObjectSelect) return;
+
+        const canvas = canvasRef.current;
+        const rect = canvas.getBoundingClientRect();
+
+        mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycasterRef.current.setFromCamera(mouseRef.current, camera);
+
+        // Filter out system objects (Grid, Gizmos) for performance
+        const candidates = scene.children.filter(obj =>
+            obj !== transformGizmoRef.current &&
+            !(obj instanceof THREE.GridHelper)
+        );
+
+        const intersects = raycasterRef.current.intersectObjects(candidates, true);
+
+        if (intersects.length > 0) {
+            const selectedObj = intersects.find(
+                (intersect) =>
+                    intersect.object instanceof THREE.Mesh ||
+                    intersect.object instanceof THREE.Light
+            );
+
+            if (selectedObj) {
+                onObjectSelect(selectedObj.object);
+            }
+        } else {
+            onObjectSelect(null);
+        }
+    }, [scene, camera, onObjectSelect]);
+
+    // Handle smart selection (only select if mouse didn't move much)
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        let downX = 0;
+        let downY = 0;
+
+        const onPointerDown = (e: PointerEvent) => {
+            downX = e.clientX;
+            downY = e.clientY;
+        };
+
+        const onPointerUp = (e: PointerEvent) => {
+            const moveDistance = Math.sqrt(
+                Math.pow(e.clientX - downX, 2) + Math.pow(e.clientY - downY, 2)
+            );
+
+            // Only trigger selection if moved less than 2 pixels (click, not drag)
+            if (moveDistance < 2) {
+                handleCanvasClick(e);
+            }
+        };
+
+        canvas.addEventListener('pointerdown', onPointerDown);
+        canvas.addEventListener('pointerup', onPointerUp);
+
+        return () => {
+            canvas.removeEventListener('pointerdown', onPointerDown);
+            canvas.removeEventListener('pointerup', onPointerUp);
+        };
+    }, [handleCanvasClick]);
+
+    // Animation loop
+    useEffect(() => {
+        if (!scene || !camera) return;
+
+        let animationFrameId: number;
+
+        const animate = () => {
+            animationFrameId = requestAnimationFrame(animate);
+
+            if (orbitControlsRef.current) {
+                orbitControlsRef.current.update();
+            }
+
+            onRender(scene);
+        };
+
+        animate();
+
+        return () => {
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, [scene, camera, onRender]);
+
+    return (
+        <div className={`relative w-full h-full bg-neutral-900 ${className}`}>
+            <canvas
+                ref={canvasRef}
+                className="w-full h-full block"
+                style={{ cursor: mode === EditorMode.SELECT ? 'pointer' : 'default' }}
+            />
+        </div>
+    );
+}
