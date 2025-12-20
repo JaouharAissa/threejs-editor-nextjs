@@ -25,6 +25,7 @@ interface SidebarWithSceneProps extends SidebarProps {
     scene: THREE.Scene | null;
     camera: THREE.PerspectiveCamera | null;
     onObjectSelect: (object: THREE.Object3D | null) => void;
+    updateTrigger?: number; // Force re-read of object properties
 }
 
 type TabType = 'scene' | 'properties';
@@ -35,6 +36,7 @@ const Sidebar = ({
     camera,
     onPropertyChange,
     onObjectSelect,
+    updateTrigger,
     className = ''
 }: SidebarWithSceneProps) => {
     const [activeTab, setActiveTab] = useState<TabType>('scene');
@@ -81,7 +83,7 @@ const Sidebar = ({
                 }
             }
         }
-    }, [selectedObject]);
+    }, [selectedObject, updateTrigger]); // Re-read properties when updateTrigger changes
 
     // Handle property updates
     const handlePositionChange = (axis: 'x' | 'y' | 'z', value: string) => {

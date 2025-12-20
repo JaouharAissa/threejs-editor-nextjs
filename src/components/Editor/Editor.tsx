@@ -21,7 +21,7 @@ export default function Editor() {
     const { state, selectObject, setMode } = useEditorState();
     const [camera, setCamera] = useState<THREE.PerspectiveCamera | null>(null);
     const [transformSpace, setTransformSpace] = useState<'local' | 'world'>('world');
-    const [, forceUpdate] = useState({});
+    const [updateCounter, setUpdateCounter] = useState(0);
 
     // Initialize camera on mount (client-side only)
     useEffect(() => {
@@ -192,8 +192,8 @@ export default function Editor() {
     );
 
     const handleTransformChange = useCallback(() => {
-        // Force re-render to update sidebar values
-        forceUpdate({});
+        // Increment counter to trigger Sidebar property re-read
+        setUpdateCounter(prev => prev + 1);
     }, []);
 
     return (
@@ -225,6 +225,7 @@ export default function Editor() {
                     camera={camera}
                     onPropertyChange={handlePropertyChange}
                     onObjectSelect={selectObject}
+                    updateTrigger={updateCounter}
                 />
             </div>
         </div>
