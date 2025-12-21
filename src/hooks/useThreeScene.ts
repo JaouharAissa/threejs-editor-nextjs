@@ -18,37 +18,57 @@ import { createScene, createGridHelper, createLighting, disposeObject } from '@/
 
 export function useThreeScene() {
     const sceneRef = useRef<THREE.Scene | null>(null);
+    const sceneHelpersRef = useRef<THREE.Scene | null>(null);
     const [scene, setScene] = useState<THREE.Scene | null>(null);
+    const [sceneHelpers, setSceneHelpers] = useState<THREE.Scene | null>(null);
     const [gridVisible, setGridVisible] = useState(true);
     const gridHelperRef = useRef<THREE.GridHelper | null>(null);
 
-    // Initialize scene on mount
+    // Initialize scene and sceneHelpers on mount
     useEffect(() => {
         if (!sceneRef.current) {
+            // Main scene for user objects
             const newScene = createScene();
             sceneRef.current = newScene;
             setScene(newScene);
 
-            // Add default lighting
+            // Helpers scene for UI helpers (like original editor)
+            // Only visual helpers go here (grid, gizmos), NOT lights
+            const newSceneHelpers = new THREE.Scene();
+            sceneHelpersRef.current = newSceneHelpers;
+            setSceneHelpers(newSceneHelpers);
+
+            // IMPORTANT: Lights must be in main scene to illuminate user objects
+            // In Three.js, lights only affect objects in the same scene
             const lights = createLighting();
             lights.forEach(light => newScene.add(light));
 
-            // Add grid helper
+            // Add grid helper to helpers scene (visual only, doesn't need to be pickable)
             const grid = createGridHelper();
             gridHelperRef.current = grid;
-            newScene.add(grid);
+            newSceneHelpers.add(grid);
         }
 
         // Cleanup on unmount
         return () => {
             if (sceneRef.current) {
-                // Dispose all objects in the scene
+                // Dispose all objects in the main scene
                 sceneRef.current.children.forEach(child => {
                     disposeObject(child);
                 });
                 sceneRef.current.clear();
                 sceneRef.current = null;
                 setScene(null);
+            }
+
+            if (sceneHelpersRef.current) {
+                // Dispose all objects in the helpers scene
+                sceneHelpersRef.current.children.forEach(child => {
+                    disposeObject(child);
+                });
+                sceneHelpersRef.current.clear();
+                sceneHelpersRef.current = null;
+                setSceneHelpers(null);
             }
         };
     }, []);
@@ -76,14 +96,15 @@ export function useThreeScene() {
         }
     }, []);
 
-    // Clear all user-added objects (keep lights and grid)
+    // Clear all user-added objects (keep lights)
+    // Grid is in sceneHelpers, but lights are in main scene (needed for illumination)
     const clearScene = useCallback(() => {
         if (sceneRef.current) {
             const objectsToRemove: THREE.Object3D[] = [];
 
             sceneRef.current.children.forEach(child => {
-                // Keep lights and grid helper
-                if (!(child instanceof THREE.Light) && child !== gridHelperRef.current) {
+                // Keep lights (they illuminate the scene)
+                if (!(child instanceof THREE.Light)) {
                     objectsToRemove.push(child);
                 }
             });
@@ -94,6 +115,7 @@ export function useThreeScene() {
 
     return {
         scene,
+        sceneHelpers,
         gridVisible,
         toggleGrid,
         addObject,

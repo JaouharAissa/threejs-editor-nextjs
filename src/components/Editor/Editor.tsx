@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { useThreeScene } from '@/hooks/useThreeScene';
 import { useRenderer } from '@/hooks/useRenderer';
@@ -17,7 +17,7 @@ import Toolbar from './Toolbar';
 import MenuBar from './MenuBar';
 
 export default function Editor() {
-    const { scene, gridVisible, toggleGrid, addObject, removeObject, clearScene } = useThreeScene();
+    const { scene, sceneHelpers, gridVisible, toggleGrid, addObject, removeObject, clearScene } = useThreeScene();
     const { state, selectObject, setMode } = useEditorState();
     const [camera, setCamera] = useState<THREE.PerspectiveCamera | null>(null);
     const [transformSpace, setTransformSpace] = useState<'local' | 'world'>('world');
@@ -181,8 +181,9 @@ export default function Editor() {
     };
 
     const handleRender = useCallback((sceneToRender: THREE.Scene) => {
-        render(sceneToRender);
-    }, [render]);
+        // Render both main scene and helpers scene
+        render(sceneToRender, sceneHelpers ?? undefined);
+    }, [render, sceneHelpers]);
 
     const handlePropertyChange = useCallback(
         (object: THREE.Object3D, property: string, value: unknown) => {
@@ -191,9 +192,18 @@ export default function Editor() {
         []
     );
 
+    // Use ref to prevent multiple pending updates
+    const transformUpdatePending = useRef(false);
+
     const handleTransformChange = useCallback(() => {
-        // Increment counter to trigger Sidebar property re-read
-        setUpdateCounter(prev => prev + 1);
+        // Prevent multiple updates from queuing up
+        if (transformUpdatePending.current) return;
+
+        transformUpdatePending.current = true;
+        requestAnimationFrame(() => {
+            setUpdateCounter(prev => prev + 1);
+            transformUpdatePending.current = false;
+        });
     }, []);
 
     return (
@@ -209,6 +219,7 @@ export default function Editor() {
                 <div className="flex-1">
                     <Viewport
                         scene={scene}
+                        sceneHelpers={sceneHelpers}
                         camera={camera}
                         onInitRenderer={initRenderer}
                         onRender={handleRender}

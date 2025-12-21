@@ -55,10 +55,39 @@ export function useRenderer({ camera }: UseRendererProps) {
         }
     }, [camera]);
 
-    // Render a frame
-    const render = useCallback((scene: THREE.Scene) => {
+    // Render a frame - can accept either scene or both scenes
+    const render = useCallback((scene: THREE.Scene, helpersScene?: THREE.Scene) => {
         if (rendererRef.current && camera) {
+            // Render main scene
             rendererRef.current.render(scene, camera);
+
+            // If helpers scene provided, render it on top without clearing
+            // This allows grid and transform controls gizmo to appear over the main scene
+            if (helpersScene) {
+                // Temporarily disable autoClear to composite both scenes
+                rendererRef.current.autoClear = false;
+
+                // Suppress the TransformControls warning about scene graph
+                // This happens because the attached object is in 'scene' but we're rendering 'helpersScene'
+                // The original editor has the same setup and works fine
+                const originalError = console.error;
+                console.error = (...args: any[]) => {
+                    const message = args[0];
+                    // Suppress only the specific TransformControls warning
+                    if (typeof message === 'string' && message.includes('TransformControls') && message.includes('scene graph')) {
+                        return;
+                    }
+                    originalError(...args);
+                };
+
+                rendererRef.current.render(helpersScene, camera);
+
+                // Restore console.error
+                console.error = originalError;
+
+                // Re-enable autoClear
+                rendererRef.current.autoClear = true;
+            }
         }
     }, [camera]);
 

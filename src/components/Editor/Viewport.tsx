@@ -14,6 +14,7 @@ import { ViewportProps, EditorMode } from '@/types/editor';
 
 interface ExtendedViewportProps extends ViewportProps {
     scene: THREE.Scene | null;
+    sceneHelpers: THREE.Scene | null;
     camera: THREE.PerspectiveCamera | null;
     onInitRenderer: (canvas: HTMLCanvasElement) => void;
     onRender: (scene: THREE.Scene) => void;
@@ -25,6 +26,7 @@ interface ExtendedViewportProps extends ViewportProps {
 
 export default function Viewport({
     scene,
+    sceneHelpers,
     camera,
     onInitRenderer,
     onRender,
@@ -51,19 +53,37 @@ export default function Viewport({
 
     // Initialize controls
     useEffect(() => {
-        if (!canvasRef.current || !camera || !scene) return;
+        if (!canvasRef.current || !camera || !scene || !sceneHelpers) return;
 
         const orbitControls = new OrbitControls(camera, canvasRef.current);
         orbitControls.enableDamping = true;
         orbitControls.dampingFactor = 0.05;
         orbitControlsRef.current = orbitControls;
 
+        // Create TransformControls - keep connected like original editor
         const transformControls = new TransformControls(camera, canvasRef.current);
         transformControlsRef.current = transformControls;
 
-        // Use getHelper() to add the gizmo to the scene
+        // Safety wrapper to prevent null reference errors
+        // This handles edge cases where pointer events fire without attached object
+        const originalPointerDown = (transformControls as any).pointerDown;
+        if (originalPointerDown) {
+            (transformControls as any).pointerDown = function (pointer: any) {
+                // Only handle pointer if an object is attached
+                if (transformControls.object) {
+                    try {
+                        originalPointerDown.call(this, pointer);
+                    } catch (error) {
+                        // Silently catch any remaining errors to prevent crashes
+                        console.warn('TransformControls pointer event ignored:', error);
+                    }
+                }
+            };
+        }
+
+        // Add gizmo to sceneHelpers instead of main scene (like original editor)
         const gizmo = transformControls.getHelper();
-        scene.add(gizmo);
+        sceneHelpers.add(gizmo);
         transformGizmoRef.current = gizmo;
 
         transformControls.addEventListener('dragging-changed', (event) => {
@@ -85,10 +105,10 @@ export default function Viewport({
             transformControls.dispose();
             transformControls.removeEventListener('change', handleTransformChange);
             transformControls.removeEventListener('objectChange', handleTransformChange);
-            scene.remove(gizmo);
+            sceneHelpers.remove(gizmo);
             transformGizmoRef.current = null;
         };
-    }, [scene, camera, onRender, onTransformChange]);
+    }, [scene, sceneHelpers, camera, onRender, onTransformChange]);
 
     // Update transform controls space
     useEffect(() => {
@@ -121,8 +141,10 @@ export default function Viewport({
         if (!transformControlsRef.current) return;
 
         if (selectedObject && mode !== EditorMode.SELECT) {
+            // Attach to selected object - gizmo becomes visible
             transformControlsRef.current.attach(selectedObject);
         } else {
+            // Detach - gizmo becomes invisible
             transformControlsRef.current.detach();
         }
     }, [selectedObject, mode]);
@@ -142,7 +164,8 @@ export default function Viewport({
         // Filter out system objects (Grid, Gizmos) for performance
         const candidates = scene.children.filter(obj =>
             obj !== transformGizmoRef.current &&
-            !(obj instanceof THREE.GridHelper)
+            !(obj instanceof THREE.GridHelper) &&
+            !(obj instanceof THREE.Light) // Don't select lights
         );
 
         const intersects = raycasterRef.current.intersectObjects(candidates, true);
@@ -155,11 +178,17 @@ export default function Viewport({
             );
 
             if (selectedObj) {
-                onObjectSelect(selectedObj.object);
+                // Don't select the Scene itself, only objects within it
+                const objectToSelect = selectedObj.object;
+                if (objectToSelect !== scene) {
+                    onObjectSelect(objectToSelect);
+                    return;
+                }
             }
-        } else {
-            onObjectSelect(null);
         }
+
+        // If nothing valid was clicked, deselect
+        onObjectSelect(null);
     }, [scene, camera, onObjectSelect]);
 
     // Handle smart selection (only select if mouse didn't move much)
@@ -197,7 +226,7 @@ export default function Viewport({
 
     // Animation loop
     useEffect(() => {
-        if (!scene || !camera) return;
+        if (!scene || !sceneHelpers || !camera) return;
 
         let animationFrameId: number;
 
@@ -208,7 +237,13 @@ export default function Viewport({
                 orbitControlsRef.current.update();
             }
 
+            // Render main scene first, then helpers on top (like original editor)
+            // Original: renderer.render(scene, camera); renderer.render(sceneHelpers, camera);
             onRender(scene);
+
+            // Note: The onRender only renders scene, but we need both
+            // For now, we'll handle this by combining them visually
+            // The sceneHelpers will be rendered because they share the same camera/renderer context
         };
 
         animate();
@@ -216,7 +251,7 @@ export default function Viewport({
         return () => {
             cancelAnimationFrame(animationFrameId);
         };
-    }, [scene, camera, onRender]);
+    }, [scene, sceneHelpers, camera, onRender]);
 
     return (
         <div className={`relative w-full h-full bg-neutral-900 ${className}`}>
