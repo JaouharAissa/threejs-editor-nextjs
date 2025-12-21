@@ -66,9 +66,20 @@ The properties panel uses **Controlled Components**. The input values are tied t
 *   **Benefit**: Allows for validation, formatting, and immediate visual feedback (e.g., changing color).
 
 ### C. Separation of "App State" and "Scene State"
-I chose *not* to store the entire Three.js Scene in React state (which would cause massive render loops).
 *   **Decision**: React holds *references* and *metadata* (IDs, selection status, active tool), while Three.js retains the heavy object graph.
 *   **Bridge**: Custom hooks sync the two. When an object is added in Three.js, we trigger a lightweight state update to refresh the React UI tree.
+
+### D. Dual-Scene Architecture
+To keep the Scene Graph clean for export and iteration, I implemented two separate scenes:
+*   **Main Scene**: Contains only user-created objects and lights.
+*   **Helper Scene**: Contains technical artifacts (Grid, Transform Gizmos, Selection Boxes).
+*   **Why?**: This prevents "pollution" of the main scene hierarchy. We render `mainScene` first, then overlay `helperScene` by clearing the depth buffer only.
+
+### E. Performance & Re-render Handling
+I implemented several strategies to satisfy the requirement of "Avoiding unnecessary re-renders":
+1.  **Throttling High-Frequency Updates**: Transform gizmo operations fire 60+ times/second. I used `requestAnimationFrame` with a semaphore flag (Ref) to throttle state updates, preventing React from crashing with "Maximum update depth exceeded".
+2.  **Ref-Based 3D Logic**: The animation loop relies on `useRef` for accessing three.js objects (Renderer, Camera, Controls) rather than state, ensuring the 60fps loop never triggers React re-renders.
+3.  **Component Memoization**: The `SceneHierarchy` container is wrapped in `React.memo` to isolate tree updates from parent re-renders.
 
 ---
 
@@ -109,9 +120,9 @@ If this project were continuing to production, the following steps would be imme
     *   **E2E Tests**: Cypress/Playwright to verify the "Add Box -> Select -> Move" workflow (similar to the browser agent tests run during development).
     *   **Visual Regression**: Storybook to document and test the UI components (`Toolbar`, `Sidebar`) in isolation.
 
-2.  **Performance Optimization**:
-    *   **React.memo**: Memoize the `SceneTreeNode` to prevent re-rendering the entire tree when one leaf node changes.
-    *   **Virtualization**: Use `react-window` for the Scene Hierarchy if the scene grows to thousands of objects.
+2.  **Large Scale Optimization**:
+    *   **Virtualization**: Implement `react-window` for the Scene Hierarchy to support scenes with 10,000+ objects without DOM lag.
+    *   **InstancedMesh**: Auto-convert identical geometries to InstancedMesh for draw call reduction.
 
 3.  **Robustness**:
     *   **Error Boundaries**: Wrap the `Viewport` in an Error Boundary to prevent a WebGL crash from taking down the whole UI.
