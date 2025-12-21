@@ -87,13 +87,13 @@ I implemented several strategies to satisfy the requirement of "Avoiding unneces
 
 Given the tight deadline, I prioritized **Core UX and Architecture** over feature parity.
 
-### ✅ Successfully Implemented (Priority 1, 5, 9)
+### 4.1 Core Features Implemented
 *   **Scene Hierarchy Tree**: Full outliner with expansion, selection sync, and visibility toggles.
 *   **Geometry Creation**: 10 supported types (Box, Sphere, Torus, Dodecahedron, etc.) via menu.
 *   **Transform Tools**: Complete Select/Move/Rotate/Scale with Local/World space toggle.
 *   **Basic Properties**: Name, Position, Rotation, Scale, Visibility, and Color editing.
 
-### ⚠️ Deferred Features (Phase 2 Roadmap)
+### 4.2 Future Roadmap (Deferred Features)
 1.  **Complex Geometry Editors**:
     *   *Original*: `Sidebar.Geometry.js` allows editing segment counts/radius *after* creation.
     *   *Current*: Objects are static meshes after creation.
