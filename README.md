@@ -4,6 +4,7 @@ A professional, production-ready Three.js 3D scene editor built with Next.js, Ty
 
 ![Three.js Editor](https://img.shields.io/badge/Three.js-Editor-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-16.1.0-black)
+![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-06B6D4)
 
@@ -261,6 +262,7 @@ If deploying to production, consider:
 
 ## 🔗 Links
 
+- **Live Demo**: [threejs-editor-nextjs.vercel.app](https://threejs-editor-nextjs.vercel.app/)
 - **Live Repository**: [github.com/Jaouhar9/threejs-editor-nextjs](https://github.com/Jaouhar9/threejs-editor-nextjs)
 - **Original Three.js Editor**: [threejs.org/editor](https://threejs.org/editor/)
 - **Technical Report**: [REPORT.md](./REPORT.md)
