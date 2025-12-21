@@ -276,9 +276,7 @@ Created as a technical assessment demonstrating:
 - Performance optimization skills
 - Problem-solving and code quality
 
-## 📄 License
 
-This project is created for educational and assessment purposes.
 
 ---
 
